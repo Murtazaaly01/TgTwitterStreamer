@@ -1,6 +1,8 @@
 from decouple import config
 
 
+
+
 class Var:
     # Telegram's API ID
     API_ID = config("API_ID", default=6)
@@ -55,10 +57,7 @@ class Var:
     AUTO_LIKE = config("AUTO_LIKE", default=False, cast=bool)
     AUTO_RETWEET = config("AUTO_RETWEET", default=False, cast=bool)
 
-    _filter_level = None
-    # There can be Wide Range of Tweets.
-    if TRACK_WORDS and not TRACK_USERS:
-        _filter_level = "low"
+    _filter_level = "low" if TRACK_WORDS and not TRACK_USERS else None
     FILTER_LEVEL = config("FILTER_LEVEL", default=_filter_level)
 
     # Filter Language of Tweets

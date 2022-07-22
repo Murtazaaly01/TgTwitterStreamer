@@ -16,7 +16,6 @@ from . import Twitter, Client, REPO_LINK, Var, LOGGER
 LOGGER.info("<<--- Setting Up Bot ! --->>")
 
 TRACK_IDS = None
-TRACK_WORDS = None
 CACHE_USERNAME = []
 
 if Var.TRACK_USERS:
@@ -35,8 +34,7 @@ if Var.TRACK_USERS:
         except Exception as e:
             LOGGER.exception(e)
 
-if Var.TRACK_WORDS:
-    TRACK_WORDS = Var.TRACK_WORDS.split(" | ")
+TRACK_WORDS = Var.TRACK_WORDS.split(" | ") if Var.TRACK_WORDS else None
 
 
 class TgStreamer(AsyncStream):
@@ -68,7 +66,7 @@ class TgStreamer(AsyncStream):
             not Var.TRACK_WORDS
             and Var.TRACK_USERS
             and not Var.TAKE_OTHERS_REPLY
-            and not user["id_str"] in TRACK_IDS
+            and user["id_str"] not in TRACK_IDS
         ):
             return
 
@@ -96,21 +94,16 @@ class TgStreamer(AsyncStream):
         for media in (entities, extended_entities, extended_tweet):
             urls = self.get_urls(media)
             all_urls.update(set(urls))
-        for pik in all_urls:
-            pic.append(pik)
+        pic.extend(iter(all_urls))
         if _entities and _entities.get("hashtags"):
             hashtags = "".join(f"#{a['text']} " for a in _entities["hashtags"])
         content = tweet.get("extended_tweet", {}).get("full_text")
 
         username = user["screen_name"]
-        sender_url = "https://twitter.com/" + username
+        sender_url = f"https://twitter.com/{username}"
         TWEET_LINK = f"{sender_url}/status/{tweet['id']}"
 
-        if content and (len(content) < 1000):
-            text = content
-        else:
-            text = tweet["text"]
-
+        text = content if content and (len(content) < 1000) else tweet["text"]
         if Var.MUST_INCLUDE and Var.MUST_INCLUDE not in text:
             return
 
@@ -136,7 +129,7 @@ class TgStreamer(AsyncStream):
 
         text = Var.CUSTOM_TEXT.format(
             SENDER=user["name"],
-            SENDER_USERNAME="@" + username,
+            SENDER_USERNAME=f"@{username}",
             TWEET_TEXT=text,
             TWEET_LINK=TWEET_LINK,
             SENDER_PROFILE=sender_url,
@@ -145,14 +138,17 @@ class TgStreamer(AsyncStream):
             HASHTAGS=hashtags,
             BOT_USERNAME=bot_username,
         )
-        if pic == []:
+
+        if not pic:
             pic = None
 
-        button = None
-        if not Var.DISABLE_BUTTON:
-            button = Button.url(text=Var.BUTTON_TITLE, url=TWEET_LINK)
+        button = (
+            None
+            if Var.DISABLE_BUTTON
+            else Button.url(text=Var.BUTTON_TITLE, url=TWEET_LINK)
+        )
 
-        is_pic_alone = bool(not pic or len(pic) == 1)
+        is_pic_alone = not pic or len(pic) == 1
         _photos = pic[0] if (pic and is_pic_alone) else pic
         if _photos == []:
             _photos = None
